@@ -237,7 +237,7 @@ class TicTacToe {
         if (state === "win") {
             line.forEach((i) => this.cells[i].classList.add("win"));
             const promo = this.generatePromo();
-            const text = "Победа!\nПромокод уже ждёт вас в боте.";
+            const text = "Победа!<br>Промокод уже ждёт вас в боте.";
             this.showResultOverlay("Вы выиграли ✨", text, promo);
             this.notifyBackend("win", promo);
         } else if (state === "lose") {
@@ -285,7 +285,7 @@ class TicTacToe {
         this.overlayTitle.textContent = title;
         
         if (text) {
-            this.overlayText.textContent = text;
+            this.overlayText.innerHTML = text;
             this.overlayText.style.display = "block";
         } else {
             this.overlayText.style.display = "none";
