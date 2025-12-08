@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Крестики-нолики</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="glow"></div>
+    <div class="page">
+        <header class="hero">
+            <h1>Крестики‑нолики</h1>
+            <div class="status" id="status">Ваш ход — ✨</div>
+        </header>
+
+        <main class="game-container">
+            <div class="board" aria-label="Игровое поле">
+                <button class="cell" data-index="0"></button>
+                <button class="cell" data-index="1"></button>
+                <button class="cell" data-index="2"></button>
+                <button class="cell" data-index="3"></button>
+                <button class="cell" data-index="4"></button>
+                <button class="cell" data-index="5"></button>
+                <button class="cell" data-index="6"></button>
+                <button class="cell" data-index="7"></button>
+                <button class="cell" data-index="8"></button>
+            </div>
+            <button id="reset" class="btn-reset">Начать заново</button>
+        </main>
+
+        <div class="overlay" id="registration-overlay">
+            <div class="overlay-content registration-modal">
+                <div class="modal-icon">📱</div>
+                <h2>Регистрация</h2>
+                <p>Для участия в игре и получения промокодов перейдите в Telegram-бота</p>
+                <a id="tg-link" class="btn-primary" target="_blank" rel="noopener">
+                    Перейти в Telegram
+                </a>
+            </div>
+        </div>
+
+        <div class="overlay" id="result-overlay">
+            <div class="overlay-content result-modal">
+                <p class="overlay-title" id="overlay-title"></p>
+                <h3 id="overlay-text"></h3>
+                <div class="promo-container" id="promo-container" style="display: none;">
+                    <div class="promo" id="overlay-promo"></div>
+                    <div class="copy-tooltip" id="copy-tooltip">Промокод скопирован!</div>
+                </div>
+                <button class="btn-primary" id="play-again">Сыграть ещё</button>
+            </div>
+        </div>
+    </div>
+    <script src="/static/app.js"></script>
+</body>
+</html>
