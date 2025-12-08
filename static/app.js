@@ -237,7 +237,7 @@ class TicTacToe {
         if (state === "win") {
             line.forEach((i) => this.cells[i].classList.add("win"));
             const promo = this.generatePromo();
-            const text = "Победа!<br>Промокод уже ждёт вас в боте.";
+            const text = "Победа!\nПромокод уже ждёт вас в боте.";
             this.showResultOverlay("Вы выиграли ✨", text, promo);
             this.notifyBackend("win", promo);
         } else if (state === "lose") {
@@ -285,8 +285,9 @@ class TicTacToe {
         this.overlayTitle.textContent = title;
         
         if (text) {
-            this.overlayText.innerHTML = text;
+            this.overlayText.textContent = text;
             this.overlayText.style.display = "block";
+            this.overlayText.style.whiteSpace = "pre-line";
         } else {
             this.overlayText.style.display = "none";
         }
@@ -350,7 +351,9 @@ window.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("load", () => {
         // Минимальное время показа загрузки - 1.5 секунды для плавности
         setTimeout(() => {
-            loader.classList.add("hidden");
+            if (loader) {
+                loader.classList.add("hidden");
+            }
             // Показываем контент одновременно с исчезновением загрузки
             if (page) {
                 page.classList.add("loaded");
@@ -360,7 +363,9 @@ window.addEventListener("DOMContentLoaded", () => {
             }
             // Удаляем loader из DOM после завершения анимации
             setTimeout(() => {
-                loader.remove();
+                if (loader) {
+                    loader.remove();
+                }
             }, 500);
         }, 1500);
     });

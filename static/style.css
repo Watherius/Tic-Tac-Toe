@@ -113,8 +113,8 @@ body {
     pointer-events: none;
     background: radial-gradient(circle at 50% 50%, rgba(255, 111, 167, 0.15), transparent 50%);
     filter: blur(60px);
-    opacity: 0.8;
-    animation: pulse 4s ease-in-out infinite;
+    opacity: 0;
+    transition: opacity 0.5s ease;
 }
 
 @keyframes pulse {
@@ -144,13 +144,9 @@ body {
     visibility: visible;
 }
 
-.glow {
-    opacity: 0;
-    transition: opacity 0.5s ease;
-}
-
 .glow.loaded {
     opacity: 0.8;
+    animation: pulse 4s ease-in-out infinite;
 }
 
 .hero {
@@ -357,6 +353,7 @@ body {
     pointer-events: none;
     transition: opacity 0.3s ease;
     z-index: 100;
+    visibility: visible;
 }
 
 .overlay.open {
