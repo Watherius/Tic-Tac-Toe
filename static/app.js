@@ -48,8 +48,10 @@ class TicTacToe {
             this.showRegistrationModal();
         } else {
             // Показываем страницу только если зарегистрирован
-            page.style.opacity = "1";
-            page.style.transition = "opacity 0.3s ease";
+            // Используем класс вместо прямого изменения стиля
+            if (!page.classList.contains("loaded")) {
+                page.classList.add("loaded");
+            }
             this.resetBoard();
         }
     }
@@ -100,8 +102,10 @@ class TicTacToe {
     hideRegistrationModal() {
         this.registrationOverlay.classList.remove("open");
         const page = document.querySelector(".page");
-        page.style.opacity = "1";
-        page.style.transition = "opacity 0.3s ease";
+        // Используем класс вместо прямого изменения стиля
+        if (!page.classList.contains("loaded")) {
+            page.classList.add("loaded");
+        }
         this.resetBoard();
     }
 
@@ -337,4 +341,29 @@ class TicTacToe {
     }
 }
 
-window.addEventListener("DOMContentLoaded", () => new TicTacToe());
+window.addEventListener("DOMContentLoaded", () => {
+    const loader = document.getElementById("loader");
+    const page = document.querySelector(".page");
+    const glow = document.querySelector(".glow");
+    
+    // Скрываем loader после полной загрузки страницы и показываем контент
+    window.addEventListener("load", () => {
+        // Минимальное время показа загрузки - 1.5 секунды для плавности
+        setTimeout(() => {
+            loader.classList.add("hidden");
+            // Показываем контент одновременно с исчезновением загрузки
+            if (page) {
+                page.classList.add("loaded");
+            }
+            if (glow) {
+                glow.classList.add("loaded");
+            }
+            // Удаляем loader из DOM после завершения анимации
+            setTimeout(() => {
+                loader.remove();
+            }, 500);
+        }, 1500);
+    });
+    
+    new TicTacToe();
+});

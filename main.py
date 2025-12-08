@@ -14,7 +14,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 
-
 load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
