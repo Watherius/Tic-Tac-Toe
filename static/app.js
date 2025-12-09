@@ -2,14 +2,15 @@ class TicTacToe {
     constructor() {
         this.cells = Array.from(document.querySelectorAll(".cell"));
         this.status = document.getElementById("status");
-        this.registrationOverlay = document.getElementById("registration-overlay");
         this.resultOverlay = document.getElementById("result-overlay");
         this.overlayTitle = document.getElementById("overlay-title");
         this.overlayText = document.getElementById("overlay-text");
         this.overlayPromo = document.getElementById("overlay-promo");
         this.playAgainBtn = document.getElementById("play-again");
         this.resetBtn = document.getElementById("reset");
-        this.tgLink = document.getElementById("tg-link");
+        this.tgLink = document.getElementById("tg-link-btn");
+        this.registrationText = document.getElementById("registration-text");
+        this.telegramSentText = document.getElementById("telegram-sent-text");
         this.promoContainer = document.getElementById("promo-container");
         this.copyTooltip = document.getElementById("copy-tooltip");
         this.board = Array(9).fill(null);
@@ -21,6 +22,10 @@ class TicTacToe {
         this.sessionId = null;
         this.gamesPlayed = 0;
         this.botTimeout = null;
+        this.pendingGameState = null;
+        this.pendingPromo = null;
+        this.registrationCheckInterval = null;
+        this.registrationUpdateTimeout = null;
         this.winningLines = [
             [0, 1, 2],
             [3, 4, 5],
@@ -40,31 +45,11 @@ class TicTacToe {
         await this.prepareSession();
         this.attachHandlers();
         
-        // Проверяем регистрацию перед показом модального окна
-        const isRegistered = await this.checkRegistrationOnInit();
-        
-        if (!isRegistered) {
-            // Показываем модальное окно сразу, страница остается скрытой
-            this.showRegistrationModal();
-        } else {
-            // Показываем страницу только если зарегистрирован
-            // Используем класс вместо прямого изменения стиля
-            if (!page.classList.contains("loaded")) {
-                page.classList.add("loaded");
-            }
-            this.resetBoard();
+        // Игра начинается сразу без проверки регистрации
+        if (!page.classList.contains("loaded")) {
+            page.classList.add("loaded");
         }
-    }
-    
-    async checkRegistrationOnInit() {
-        try {
-            const res = await fetch(`/api/check-registration?session_id=${this.sessionId}`);
-            const data = await res.json();
-            return data.registered;
-        } catch (err) {
-            console.error("Ошибка проверки регистрации", err);
-            return false;
-        }
+        this.resetBoard();
     }
 
     async prepareSession() {
@@ -78,35 +63,78 @@ class TicTacToe {
             localStorage.setItem("session_id", this.sessionId);
         }
         const link = `https://t.me/tic_tac_toe_new_bot?start=${this.sessionId}`;
-        this.tgLink.href = link;
+        if (this.tgLink) {
+            this.tgLink.href = link;
+        }
     }
 
-    showRegistrationModal() {
-        this.registrationOverlay.classList.add("open");
-    }
-
-    async checkRegistration() {
-        if (!this.registrationOverlay.classList.contains("open")) return;
-        
+    async checkRegistrationOnInit() {
         try {
             const res = await fetch(`/api/check-registration?session_id=${this.sessionId}`);
             const data = await res.json();
-            if (data.registered) {
-                this.hideRegistrationModal();
-            }
+            return data.registered;
         } catch (err) {
             console.error("Ошибка проверки регистрации", err);
+            return false;
         }
     }
 
-    hideRegistrationModal() {
-        this.registrationOverlay.classList.remove("open");
-        const page = document.querySelector(".page");
-        // Используем класс вместо прямого изменения стиля
-        if (!page.classList.contains("loaded")) {
-            page.classList.add("loaded");
+    startRegistrationCheck() {
+        // Очищаем предыдущий интервал, если есть
+        if (this.registrationCheckInterval) {
+            clearInterval(this.registrationCheckInterval);
         }
-        this.resetBoard();
+        
+        // Проверяем регистрацию каждые 3 секунды
+        this.registrationCheckInterval = setInterval(async () => {
+            // Проверяем только если окно результата открыто и показывается кнопка Telegram
+            if (this.resultOverlay.classList.contains("open") && 
+                this.tgLink.style.display !== "none") {
+                const isRegistered = await this.checkRegistrationOnInit();
+                
+                if (isRegistered && this.pendingGameState) {
+                    // Пользователь зарегистрировался - обновляем окно
+                    this.updateResultAfterRegistration();
+                }
+            }
+        }, 3000);
+    }
+
+    updateResultAfterRegistration() {
+        // Очищаем интервал проверки
+        if (this.registrationCheckInterval) {
+            clearInterval(this.registrationCheckInterval);
+            this.registrationCheckInterval = null;
+        }
+
+        // Очищаем предыдущий таймер обновления, если есть
+        if (this.registrationUpdateTimeout) {
+            clearTimeout(this.registrationUpdateTimeout);
+            this.registrationUpdateTimeout = null;
+        }
+
+        const state = this.pendingGameState;
+        const promo = this.pendingPromo;
+
+        // Обновляем окно в зависимости от состояния игры
+        if (state === "win") {
+            // После регистрации показываем "Ваш промокод:" + кнопка "Сыграть ещё" (без текста о телеграмме)
+            this.showResultOverlay("Вы выиграли ✨", "Ваш промокод:", promo, true, null, false);
+            
+            // Очищаем состояние
+            this.pendingGameState = null;
+            this.pendingPromo = null;
+        } else if (state === "lose") {
+            // Очищаем состояние
+            this.pendingGameState = null;
+            this.pendingPromo = null;
+            this.showResultOverlay("Компьютер выиграл 💖", "Сыграем ещё раз?", null, true);
+        } else if (state === "draw") {
+            // Очищаем состояние
+            this.pendingGameState = null;
+            this.pendingPromo = null;
+            this.showResultOverlay("Ничья", "Ничья. Ещё одна партия?", null, true);
+        }
     }
 
     attachHandlers() {
@@ -118,17 +146,23 @@ class TicTacToe {
         });
 
         this.playAgainBtn.addEventListener("click", () => {
+            // Закрываем окно
             this.hideResultOverlay();
-            this.resetBoard();
+            // Небольшая задержка для завершения анимации закрытия перед сбросом доски
+            setTimeout(() => {
+                // Проверяем, что окно действительно закрыто
+                if (!this.resultOverlay.classList.contains("open")) {
+                    this.resetBoard();
+                }
+            }, 350);
         });
 
         this.resetBtn.addEventListener("click", () => {
             this.resetBoard();
         });
 
-        // Проверка регистрации при загрузке и периодически
-        this.checkRegistration();
-        setInterval(() => this.checkRegistration(), 3000);
+        // Периодическая проверка регистрации когда показывается окно с кнопкой Telegram
+        this.startRegistrationCheck();
     }
 
     resetBoard() {
@@ -137,6 +171,10 @@ class TicTacToe {
             clearTimeout(this.botTimeout);
             this.botTimeout = null;
         }
+
+        // Очищаем состояние ожидания регистрации
+        this.pendingGameState = null;
+        this.pendingPromo = null;
 
         this.board = Array(9).fill(null);
         this.gameOver = false;
@@ -223,7 +261,7 @@ class TicTacToe {
         return this.winningLines.some((combo) => combo.every((i) => board[i] === mark));
     }
 
-    finishGame(state, line = []) {
+    async finishGame(state, line = []) {
         // Отменяем таймер бота, если он был установлен
         if (this.botTimeout) {
             clearTimeout(this.botTimeout);
@@ -237,15 +275,50 @@ class TicTacToe {
         if (state === "win") {
             line.forEach((i) => this.cells[i].classList.add("win"));
             const promo = this.generatePromo();
-            const text = "Победа!\nПромокод уже ждёт вас в боте.";
-            this.showResultOverlay("Вы выиграли ✨", text, promo);
+            
+            // Проверяем регистрацию после победы
+            const isRegistered = await this.checkRegistrationOnInit();
+            
+            if (!isRegistered) {
+                // Сохраняем состояние для обновления после регистрации
+                this.pendingGameState = "win";
+                this.pendingPromo = promo;
+                // Если не зарегистрирован - показываем окно победы с промокодом и текстом о регистрации
+                const text = "Ваш промокод:";
+                this.showResultOverlay("Вы выиграли ✨", text, promo, false, null, false);
+            } else {
+                // Если зарегистрирован - показываем "Ваш промокод:" + "Промокод отправлен в телеграмм" + кнопка "Сыграть ещё"
+                const text = "Ваш промокод:";
+                this.showResultOverlay("Вы выиграли ✨", text, promo, true, null, true);
+            }
+            
             this.notifyBackend("win", promo);
         } else if (state === "lose") {
             line.forEach((i) => this.cells[i].classList.add("win"));
-            this.showResultOverlay("Компьютер выиграл 💖", "Сыграем ещё раз?");
+            
+            // Проверяем регистрацию после проигрыша
+            const isRegistered = await this.checkRegistrationOnInit();
+            
+            if (!isRegistered) {
+                // Сохраняем состояние для обновления после регистрации
+                this.pendingGameState = "lose";
+                this.showResultOverlay("Компьютер выиграл 💖", "Сыграем ещё раз?", null, false, "Чтобы сыграть еще раз, пройдите быструю регистрацию через бота");
+            } else {
+                this.showResultOverlay("Компьютер выиграл 💖", "Сыграем ещё раз?", null, true);
+            }
+            
             this.notifyBackend("lose");
         } else {
-            this.showResultOverlay("Ничья", "Ничья. Ещё одна партия?");
+            // Проверяем регистрацию после ничьей
+            const isRegistered = await this.checkRegistrationOnInit();
+            
+            if (!isRegistered) {
+                // Сохраняем состояние для обновления после регистрации
+                this.pendingGameState = "draw";
+                this.showResultOverlay("Ничья", "Ничья. Ещё одна партия?", null, false);
+            } else {
+                this.showResultOverlay("Ничья", "Ничья. Ещё одна партия?", null, true);
+            }
         }
     }
 
@@ -281,7 +354,7 @@ class TicTacToe {
         }
     }
 
-    showResultOverlay(title, text, promo) {
+    showResultOverlay(title, text, promo, showPlayAgain = true, registrationText = null, showTelegramSent = false) {
         this.overlayTitle.textContent = title;
         
         if (text) {
@@ -311,6 +384,33 @@ class TicTacToe {
             this.promoContainer.style.display = "none";
         }
         
+        // Показываем/скрываем текст о регистрации и кнопки в зависимости от параметра
+        if (!showPlayAgain) {
+            // Показываем текст о регистрации и кнопку Telegram, скрываем "Сыграть ещё"
+            if (registrationText) {
+                this.registrationText.textContent = registrationText;
+            } else {
+                this.registrationText.textContent = "Чтобы сохранять промокоды и результаты игры, пройдите регистрацию через бота";
+            }
+            this.registrationText.style.display = "block";
+            this.telegramSentText.style.display = "none";
+            this.playAgainBtn.style.display = "none";
+            this.tgLink.style.display = "inline-block";
+        } else {
+            // Скрываем текст о регистрации и кнопку Telegram, показываем "Сыграть ещё"
+            this.registrationText.style.display = "none";
+            
+            // Показываем текст о телеграмме только если пользователь был зарегистрирован до победы
+            if (showTelegramSent) {
+                this.telegramSentText.style.display = "block";
+            } else {
+                this.telegramSentText.style.display = "none";
+            }
+            
+            this.playAgainBtn.style.display = "inline-block";
+            this.tgLink.style.display = "none";
+        }
+        
         this.resultOverlay.classList.add("open");
     }
 
@@ -329,16 +429,48 @@ class TicTacToe {
     }
 
     hideResultOverlay() {
-        this.resultOverlay.classList.remove("open");
-        this.overlayPromo.textContent = "";
-        this.promoContainer.style.display = "none";
-        
-        // Удаляем обработчик
-        const oldHandler = this.overlayPromo._copyHandler;
-        if (oldHandler) {
-            this.overlayPromo.removeEventListener("click", oldHandler);
-            this.overlayPromo._copyHandler = null;
+        // Проверяем, что окно действительно открыто перед закрытием
+        if (!this.resultOverlay.classList.contains("open")) {
+            return;
         }
+        
+        // Останавливаем проверку регистрации
+        if (this.registrationCheckInterval) {
+            clearInterval(this.registrationCheckInterval);
+            this.registrationCheckInterval = null;
+        }
+        
+        // Очищаем таймер обновления окна
+        if (this.registrationUpdateTimeout) {
+            clearTimeout(this.registrationUpdateTimeout);
+            this.registrationUpdateTimeout = null;
+        }
+        
+        // Сначала удаляем класс "open" для начала анимации закрытия
+        this.resultOverlay.classList.remove("open");
+        
+        // Очищаем содержимое после завершения анимации закрытия (300ms - время анимации)
+        setTimeout(() => {
+            this.overlayPromo.textContent = "";
+            this.promoContainer.style.display = "none";
+            
+            // Сбрасываем состояние кнопок и текста
+            this.registrationText.style.display = "none";
+            this.telegramSentText.style.display = "none";
+            this.playAgainBtn.style.display = "inline-block";
+            this.tgLink.style.display = "none";
+            
+            // Очищаем состояние ожидания регистрации
+            this.pendingGameState = null;
+            this.pendingPromo = null;
+            
+            // Удаляем обработчик
+            const oldHandler = this.overlayPromo._copyHandler;
+            if (oldHandler) {
+                this.overlayPromo.removeEventListener("click", oldHandler);
+                this.overlayPromo._copyHandler = null;
+            }
+        }, 300);
     }
 }
 

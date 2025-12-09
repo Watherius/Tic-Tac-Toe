@@ -39,17 +39,6 @@
             <button id="reset" class="btn-reset">Начать заново</button>
         </main>
 
-        <div class="overlay" id="registration-overlay">
-            <div class="overlay-content registration-modal">
-                <div class="modal-icon">📱</div>
-                <h2>Регистрация</h2>
-                <p>Для участия в игре и получения промокодов перейдите в Telegram-бота</p>
-                <a id="tg-link" class="btn-primary" target="_blank" rel="noopener">
-                    Перейти в Telegram
-                </a>
-            </div>
-        </div>
-
         <div class="overlay" id="result-overlay">
             <div class="overlay-content result-modal">
                 <p class="overlay-title" id="overlay-title"></p>
@@ -58,7 +47,16 @@
                     <div class="promo" id="overlay-promo"></div>
                     <div class="copy-tooltip" id="copy-tooltip">Промокод скопирован!</div>
                 </div>
+                <p id="registration-text" style="display: none; margin-top: 16px; margin-bottom: 16px; color: #666; font-size: 14px;">
+                    Чтобы сохранять промокоды и результаты игры, пройдите регистрацию через бота
+                </p>
+                <p id="telegram-sent-text" style="display: none; margin-top: 16px; margin-bottom: 16px; color: #666; font-size: 14px;">
+                    Промокод отправлен в телеграмм
+                </p>
                 <button class="btn-primary" id="play-again">Сыграть ещё</button>
+                <a id="tg-link-btn" class="btn-primary" target="_blank" rel="noopener" style="display: none;">
+                    Перейти в Telegram
+                </a>
             </div>
         </div>
     </div>
